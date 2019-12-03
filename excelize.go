@@ -28,6 +28,7 @@ import (
 type File struct {
 	checked          map[string]bool
 	sheetMap         map[string]string
+	sheetCapMap      map[string]*SheetCap
 	CalcChain        *xlsxCalcChain
 	Comments         map[string]*xlsxComments
 	ContentTypes     *xlsxTypes
@@ -136,7 +137,8 @@ func (f *File) workSheetReader(sheet string) (*xlsxWorksheet, error) {
 		}
 		ok := f.checked[name]
 		if !ok {
-			checkSheet(&xlsx)
+			sheetCap := f.sheetCapMap[trimSheetName(sheet)]
+			checkSheet(&xlsx, sheetCap)
 			checkRow(&xlsx)
 			f.checked[name] = true
 		}
@@ -147,7 +149,10 @@ func (f *File) workSheetReader(sheet string) (*xlsxWorksheet, error) {
 
 // checkSheet provides a function to fill each row element and make that is
 // continuous in a worksheet of XML.
-func checkSheet(xlsx *xlsxWorksheet) {
+func checkSheet(xlsx *xlsxWorksheet, sheetCap *SheetCap) {
+	var (
+		rowCap, colCap int
+	)
 	row := len(xlsx.SheetData.Row)
 	if row >= 1 {
 		lastRow := xlsx.SheetData.Row[row-1].R
@@ -155,7 +160,11 @@ func checkSheet(xlsx *xlsxWorksheet) {
 			row = lastRow
 		}
 	}
-	sheetData := xlsxSheetData{}
+	if sheetCap != nil {
+		rowCap, colCap = sheetCap.rowCap, sheetCap.colCap
+	}
+	sheetData := xlsxSheetData{rowCap: rowCap, colCap: colCap}
+	sheetData.Row = make([]xlsxRow, 0, sheetData.rowCap)
 	existsRows := map[int]int{}
 	for k := range xlsx.SheetData.Row {
 		existsRows[xlsx.SheetData.Row[k].R] = k
@@ -165,9 +174,8 @@ func checkSheet(xlsx *xlsxWorksheet) {
 		if ok {
 			sheetData.Row = append(sheetData.Row, xlsx.SheetData.Row[existsRows[i+1]])
 		} else {
-			sheetData.Row = append(sheetData.Row, xlsxRow{
-				R: i + 1,
-			})
+			r := xlsxRow{R: i + 1, C: make([]xlsxC, 0, sheetData.colCap)}
+			sheetData.Row = append(sheetData.Row, r)
 		}
 	}
 	xlsx.SheetData = sheetData

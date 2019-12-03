@@ -17,12 +17,14 @@ import (
 	"os"
 )
 
+const defaultFileSizeCap = 1 << 20
+
 // NewFile provides a function to create new file by default template. For
 // example:
 //
 //    xlsx := NewFile()
 //
-func NewFile() *File {
+func NewFile(sheetCaps ...*SheetCap) *File {
 	file := make(map[string][]byte)
 	file["_rels/.rels"] = []byte(XMLHeader + templateRels)
 	file["docProps/app.xml"] = []byte(XMLHeader + templateDocpropsApp)
@@ -34,10 +36,11 @@ func NewFile() *File {
 	file["xl/workbook.xml"] = []byte(XMLHeader + templateWorkbook)
 	file["[Content_Types].xml"] = []byte(XMLHeader + templateContentTypes)
 	f := &File{
-		sheetMap:   make(map[string]string),
-		Sheet:      make(map[string]*xlsxWorksheet),
-		SheetCount: 1,
-		XLSX:       file,
+		sheetMap:    make(map[string]string),
+		Sheet:       make(map[string]*xlsxWorksheet),
+		sheetCapMap: make(map[string]*SheetCap),
+		SheetCount:  1,
+		XLSX:        file,
 	}
 	f.CalcChain = f.calcChainReader()
 	f.Comments = make(map[string]*xlsxComments)
@@ -51,6 +54,9 @@ func NewFile() *File {
 	f.Relationships["xl/_rels/workbook.xml.rels"] = f.relsReader("xl/_rels/workbook.xml.rels")
 	f.Sheet["xl/worksheets/sheet1.xml"], _ = f.workSheetReader("Sheet1")
 	f.sheetMap["Sheet1"] = "xl/worksheets/sheet1.xml"
+	for _, sheetCap := range sheetCaps {
+		f.sheetCapMap[trimSheetName(sheetCap.name)] = sheetCap
+	}
 	f.Theme = f.themeReader()
 	return f
 }
@@ -89,10 +95,12 @@ func (f *File) WriteTo(w io.Writer) (int64, error) {
 	return buf.WriteTo(w)
 }
 
-// WriteToBuffer provides a function to get bytes.Buffer from the saved file.
 func (f *File) WriteToBuffer() (*bytes.Buffer, error) {
-	buf := new(bytes.Buffer)
-	zw := zip.NewWriter(buf)
+	return f.WriteToBufferWithCap(defaultFileSizeCap)
+}
+
+// WriteToBuffer provides a function to get bytes.Buffer from the saved file.
+func (f *File) WriteToBufferWithCap(cap int) (*bytes.Buffer, error) {
 	f.calcChainWriter()
 	f.commentsWriter()
 	f.contentTypesWriter()
@@ -102,7 +110,9 @@ func (f *File) WriteToBuffer() (*bytes.Buffer, error) {
 	f.workSheetWriter()
 	f.relsWriter()
 	f.styleSheetWriter()
-
+	bs := make([]byte, 0, cap)
+	buf := bytes.NewBuffer(bs)
+	zw := zip.NewWriter(buf)
 	for path, content := range f.XLSX {
 		fi, err := zw.Create(path)
 		if err != nil {
