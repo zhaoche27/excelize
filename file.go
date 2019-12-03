@@ -17,6 +17,8 @@ import (
 	"os"
 )
 
+const defaultFileSizeCap = 1 << 20
+
 // NewFile provides a function to create new file by default template. For
 // example:
 //
@@ -34,10 +36,11 @@ func NewFile(sheetCaps ...*SheetCap) *File {
 	file["xl/workbook.xml"] = []byte(XMLHeader + templateWorkbook)
 	file["[Content_Types].xml"] = []byte(XMLHeader + templateContentTypes)
 	f := &File{
-		sheetMap:   make(map[string]string),
-		Sheet:      make(map[string]*xlsxWorksheet),
-		SheetCount: 1,
-		XLSX:       file,
+		sheetMap:    make(map[string]string),
+		Sheet:       make(map[string]*xlsxWorksheet),
+		sheetCapMap: make(map[string]*SheetCap),
+		SheetCount:  1,
+		XLSX:        file,
 	}
 	f.CalcChain = f.calcChainReader()
 	f.Comments = make(map[string]*xlsxComments)
@@ -92,9 +95,14 @@ func (f *File) WriteTo(w io.Writer) (int64, error) {
 	return buf.WriteTo(w)
 }
 
-// WriteToBuffer provides a function to get bytes.Buffer from the saved file.
 func (f *File) WriteToBuffer() (*bytes.Buffer, error) {
-	buf := new(bytes.Buffer)
+	return f.WriteToBufferWithCap(defaultFileSizeCap)
+}
+
+// WriteToBuffer provides a function to get bytes.Buffer from the saved file.
+func (f *File) WriteToBufferWithCap(cap int) (*bytes.Buffer, error) {
+	bs := make([]byte, 0, cap)
+	buf := bytes.NewBuffer(bs)
 	zw := zip.NewWriter(buf)
 	f.calcChainWriter()
 	f.commentsWriter()
