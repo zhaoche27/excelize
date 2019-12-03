@@ -1378,7 +1378,8 @@ func prepareSheetXML(xlsx *xlsxWorksheet, col int, row int) {
 	if rowCount < row {
 		// append missing rows
 		for rowIdx := rowCount; rowIdx < row; rowIdx++ {
-			xlsx.SheetData.Row = append(xlsx.SheetData.Row, xlsxRow{R: rowIdx + 1})
+			r := xlsxRow{R: rowIdx + 1, C: make([]xlsxC, 0, xlsx.SheetData.colCap)}
+			xlsx.SheetData.Row = append(xlsx.SheetData.Row, r)
 		}
 	}
 	rowData := &xlsx.SheetData.Row[row-1]

@@ -282,8 +282,9 @@ type xlsxDimension struct {
 // http://schemas.openxmlformats.org/spreadsheetml/2006/main - currently I have
 // not checked it for completeness - it does as much as I need.
 type xlsxSheetData struct {
-	XMLName xml.Name  `xml:"sheetData"`
-	Row     []xlsxRow `xml:"row"`
+	XMLName        xml.Name  `xml:"sheetData"`
+	Row            []xlsxRow `xml:"row"`
+	rowCap, colCap int
 }
 
 // xlsxRow directly maps the row element. The element expresses information

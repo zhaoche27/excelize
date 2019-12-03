@@ -22,7 +22,7 @@ import (
 //
 //    xlsx := NewFile()
 //
-func NewFile() *File {
+func NewFile(sheetCaps ...*SheetCap) *File {
 	file := make(map[string][]byte)
 	file["_rels/.rels"] = []byte(XMLHeader + templateRels)
 	file["docProps/app.xml"] = []byte(XMLHeader + templateDocpropsApp)
@@ -51,6 +51,9 @@ func NewFile() *File {
 	f.Relationships["xl/_rels/workbook.xml.rels"] = f.relsReader("xl/_rels/workbook.xml.rels")
 	f.Sheet["xl/worksheets/sheet1.xml"], _ = f.workSheetReader("Sheet1")
 	f.sheetMap["Sheet1"] = "xl/worksheets/sheet1.xml"
+	for _, sheetCap := range sheetCaps {
+		f.sheetCapMap[trimSheetName(sheetCap.name)] = sheetCap
+	}
 	f.Theme = f.themeReader()
 	return f
 }

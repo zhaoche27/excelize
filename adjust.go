@@ -52,7 +52,8 @@ func (f *File) adjustHelper(sheet string, dir adjustDirection, num, offset int) 
 	if err = f.adjustCalcChain(dir, num, offset); err != nil {
 		return err
 	}
-	checkSheet(xlsx)
+	sheetCap := f.sheetCapMap[sheet]
+	checkSheet(xlsx, sheetCap)
 	checkRow(xlsx)
 
 	if xlsx.MergeCells != nil && len(xlsx.MergeCells.Cells) == 0 {
