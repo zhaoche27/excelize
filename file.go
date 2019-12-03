@@ -101,9 +101,6 @@ func (f *File) WriteToBuffer() (*bytes.Buffer, error) {
 
 // WriteToBuffer provides a function to get bytes.Buffer from the saved file.
 func (f *File) WriteToBufferWithCap(cap int) (*bytes.Buffer, error) {
-	bs := make([]byte, 0, cap)
-	buf := bytes.NewBuffer(bs)
-	zw := zip.NewWriter(buf)
 	f.calcChainWriter()
 	f.commentsWriter()
 	f.contentTypesWriter()
@@ -113,7 +110,9 @@ func (f *File) WriteToBufferWithCap(cap int) (*bytes.Buffer, error) {
 	f.workSheetWriter()
 	f.relsWriter()
 	f.styleSheetWriter()
-
+	bs := make([]byte, 0, cap)
+	buf := bytes.NewBuffer(bs)
+	zw := zip.NewWriter(buf)
 	for path, content := range f.XLSX {
 		fi, err := zw.Create(path)
 		if err != nil {
